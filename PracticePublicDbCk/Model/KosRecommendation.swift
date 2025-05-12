@@ -9,6 +9,13 @@ import Foundation
 import CloudKit
 import CoreLocation
 
+enum RecordKeys {
+    static let recordType = "KosRecommendation"
+    static let name = "name"
+    static let review = "review"
+    static let datePosted = "datePosted"
+    static let location = "location"
+}
 
 struct KosRecommendation: Identifiable {
     let id: CKRecord.ID
@@ -16,14 +23,6 @@ struct KosRecommendation: Identifiable {
     var review: String
     var datePosted: Date
     var location: CLLocation?
-    
-    enum RecordKeys {
-        static let recordType = "KosRecommendation"
-        static let name = "name"
-        static let review = "review"
-        static let datePosted = "date"
-        static let location = "location"
-    }
     
     init(id: CKRecord.ID = CKRecord.ID(recordName: UUID().uuidString), name: String, review: String, datePosted: Date = Date(), location: CLLocation? = nil) {
         self.id = id

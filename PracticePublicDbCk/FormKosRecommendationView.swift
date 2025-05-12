@@ -10,6 +10,7 @@ import MapKit
 
 struct FormKosRecommendationView: View {
     @Environment(KosRecommendationViewModel.self) var model
+    @Environment(\.dismiss) var dismiss
     @State private var kosName = ""
     @State private var review = ""
     @State private var mapRegion = MapCameraPosition.region(MKCoordinateRegion(
@@ -23,74 +24,82 @@ struct FormKosRecommendationView: View {
     
     
     var body: some View {
-        Form {
-            Section("Informasi Kos") {
-                TextField("Nama Kos", text: $kosName)
-                TextField("Review", text: $review)
-            }
-            
-            Section("Lokasi Kos") {
-                MapReader { proxy in
-                    Map(initialPosition: mapRegion) {
-                        if let selected = selectedLocation {
-                            Annotation("Lokasi Kos", coordinate: selected) {
-                                Image(systemName: "mappin.circle.fill")
-                                    .foregroundStyle(.red)
-                                    .font(.title)
+        ZStack {
+            Form {
+                Section("Informasi Kos") {
+                    TextField("Nama Kos", text: $kosName)
+                    TextField("Review", text: $review)
+                }
+                
+                Section("Lokasi Kos") {
+                    MapReader { proxy in
+                        Map(initialPosition: mapRegion) {
+                            if let selected = selectedLocation {
+                                Annotation("Lokasi Kos", coordinate: selected) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .foregroundStyle(.red)
+                                        .font(.title)
+                                }
                             }
                         }
-                    }
-                    .onTapGesture { location in
-                        if let coord = proxy.convert(location, from: .local) {
-                            selectedLocation = coord
+                        .onTapGesture { location in
+                            if let coord = proxy.convert(location, from: .local) {
+                                selectedLocation = coord
+                            }
                         }
+                        .frame(height: 250)
                     }
-                    .frame(height: 250)
-                }
-                
-                if let selected = selectedLocation {
-                    Text("Lokasi dipilih: \(selected.latitude), \(selected.longitude)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Tekan pada peta untuk pilih lokasi")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                
-                if isLoading {
-                    ProgressView()
-                }
-                
-                if let errorMessage {
-                    Text("Error: \(errorMessage)")
-                        .foregroundStyle(.red)
-                }
-                
-                Button(action: {
-                    Task {
-                        await submit()
+                    
+                    if let selected = selectedLocation {
+                        Text("Lokasi dipilih: \(selected.latitude), \(selected.longitude)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Tekan pada peta untuk pilih lokasi")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
-                }) {
-                    Text("Simpan")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            kosName.isEmpty || review.isEmpty || selectedLocation == nil ?
-                            LinearGradient(colors: [Color.gray.opacity(0.7), Color.gray.opacity(0.5)], startPoint: .leading, endPoint: .trailing) :
-                                LinearGradient(colors: [Color.blue, Color.blue.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
-                        )
-                        .cornerRadius(10)
+                    
+                    if let errorMessage {
+                        Text("Error: \(errorMessage)")
+                            .foregroundStyle(.red)
+                    }
+                    
+                    Button(action: {
+                        Task {
+                            await submit()
+                        }
+                    }) {
+                        Text("Simpan")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                kosName.isEmpty || review.isEmpty || selectedLocation == nil ?
+                                LinearGradient(colors: [Color.gray.opacity(0.7), Color.gray.opacity(0.5)], startPoint: .leading, endPoint: .trailing) :
+                                    LinearGradient(colors: [Color.blue, Color.blue.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(10)
+                    }
+                    .padding(.vertical, 5)
+                    .disabled(kosName.isEmpty || review.isEmpty || selectedLocation == nil)
                 }
-                .padding(.vertical, 5)
-                .disabled(kosName.isEmpty || review.isEmpty || selectedLocation == nil)            }
+            }
             .navigationTitle("Tambah Review Kos")
+            
+            if isLoading {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                ProgressView("Menyimpan...")
+                    .padding()
+                    .background(.thinMaterial)
+                    .cornerRadius(10)
+            }
         }
-        
     }
+    
     
     func submit() async {
         isLoading = true
@@ -109,6 +118,7 @@ struct FormKosRecommendationView: View {
         }
         
         isLoading = false
+        dismiss()
     }
 }
 
