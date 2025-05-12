@@ -9,9 +9,10 @@ import SwiftUI
 
 @main
 struct PracticePublicDbCkApp: App {
+    @State private var model = KosRecommendationViewModel()
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            KosRecommendationsList().environment(model)
         }
     }
 }
