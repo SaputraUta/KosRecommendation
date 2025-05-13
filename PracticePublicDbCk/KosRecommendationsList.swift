@@ -49,28 +49,31 @@ struct KosRecommendationsList: View {
                 } else {
                     List {
                         ForEach(model.kosRecommendations) { kos in
-                            ZStack {
-                                VStack(alignment: .leading) {
-                                    Text(kos.name)
-                                        .font(.headline)
-                                    Text(kos.review)
-                                        .font(.subheadline)
-                                    Text(kos.datePosted.formatted())
-                                        .font(.caption)
-                                        .foregroundStyle(.gray)
-                                }
-                                .padding(.vertical, 8)
-                                .opacity(deletingItemIds.contains(kos.id) ? 0.3 : 1)
-                                
-                                if deletingItemIds.contains(kos.id) {
-                                    VStack {
-                                        ProgressView()
-                                            .scaleEffect(0.7)
-                                            .padding(.top, 4)
+                            NavigationLink(destination: KosDetailView(kos: kos)) {
+                                ZStack {
+                                    VStack(alignment: .leading) {
+                                        Text(kos.name)
+                                            .font(.headline)
+                                        Text(kos.review)
+                                            .font(.subheadline)
+                                            .lineLimit(1)
+                                        Text(kos.datePosted.formatted())
+                                            .font(.caption)
+                                            .foregroundStyle(.gray)
                                     }
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(.ultraThinMaterial)
-                                    .opacity(0.7)
+                                    .padding(.vertical, 8)
+                                    .opacity(deletingItemIds.contains(kos.id) ? 0.3 : 1)
+                                    
+                                    if deletingItemIds.contains(kos.id) {
+                                        VStack {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                                .padding(.top, 4)
+                                        }
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .background(.ultraThinMaterial)
+                                        .opacity(0.7)
+                                    }
                                 }
                             }
                         }
