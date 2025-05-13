@@ -14,7 +14,6 @@ struct KosRecommendationsList: View {
     @State private var isShowingForm = false
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var listErrorMessage: String?
     @State private var deleteErrorMessage: String?
     @State private var deletingItemIds: Set<CKRecord.ID> = []
     
@@ -22,25 +21,34 @@ struct KosRecommendationsList: View {
         NavigationStack {
             Group {
                 if isLoading {
-                    ProgressView("Memuat rekomendasi kos...")
-                } else if let errorMessage = errorMessage {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.system(size: 50))
-                        Text("Gagal Memuat")
-                            .font(.headline)
-                        Text(errorMessage)
-                            .font(.subheadline)
+                    VStack(spacing: 16) {
+                        ProgressView("Memuat rekomendasi kos...")
+                        Text("Harap tunggu sebentar.")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                        Button("Ulangi") {
+                    }
+                } else if let errorMessage = errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 50))
+                            .foregroundStyle(.red)
+                        Text("Gagal Memuat")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Text(errorMessage)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal)
+                        
+                        Button("Coba Lagi") {
                             Task {
                                 await loadRecommendations()
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .padding()
+                        .padding(.top)
                     }
+                    .padding()
                 } else if model.kosRecommendations.isEmpty {
                     ContentUnavailableView("Belum Ada Rekomendasi Kos",
                                            systemImage: "house.slash",
@@ -50,44 +58,50 @@ struct KosRecommendationsList: View {
                     List {
                         ForEach(model.kosRecommendations) { kos in
                             NavigationLink(destination: KosDetailView(kos: kos)) {
-                                ZStack {
-                                    VStack(alignment: .leading) {
-                                        Text(kos.name)
-                                            .font(.headline)
-                                        Text(kos.review)
-                                            .font(.subheadline)
-                                            .lineLimit(1)
-                                        Text(kos.datePosted.formatted())
-                                            .font(.caption)
-                                            .foregroundStyle(.gray)
-                                    }
-                                    .padding(.vertical, 8)
-                                    .opacity(deletingItemIds.contains(kos.id) ? 0.3 : 1)
-                                    
-                                    if deletingItemIds.contains(kos.id) {
-                                        VStack {
-                                            ProgressView()
-                                                .scaleEffect(0.7)
-                                                .padding(.top, 4)
-                                        }
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                        .background(.ultraThinMaterial)
-                                        .opacity(0.7)
-                                    }
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(kos.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Text(kos.review)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    Text(kos.datePosted.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.caption)
+                                        .foregroundStyle(.gray)
+                                }
+                                .padding(10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.background)
+                                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                                )
+                                .overlay(
+                                    deletingItemIds.contains(kos.id) ?
+                                    ProgressView().scaleEffect(0.6).padding() : nil
+                                )
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    deleteItem(kos)
+                                } label: {
+                                    Label("Hapus", systemImage: "trash")
                                 }
                             }
                         }
-                        .onDelete(perform: deleteRecommendation)
                     }
-                    .listStyle(InsetGroupedListStyle())
+                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Daftar Kos")
             .toolbar {
-                Button {
-                    isShowingForm = true
-                } label: {
-                    Label("Tambah", systemImage: "plus")
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        isShowingForm = true
+                    } label: {
+                        Label("Tambah", systemImage: "plus")
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
             }
             .sheet(isPresented: $isShowingForm) {
@@ -101,45 +115,45 @@ struct KosRecommendationsList: View {
             .task {
                 await loadRecommendations()
             }
+            .alert("Gagal Menghapus", isPresented: .constant(deleteErrorMessage != nil)) {
+                Button("OK") {
+                    deleteErrorMessage = nil
+                }
+            } message: {
+                Text(deleteErrorMessage ?? "")
+            }
         }
     }
     
     func loadRecommendations() async {
         isLoading = true
         errorMessage = nil
-        
         do {
             try await model.populateRecommendations()
-            isLoading = false
         } catch let error as CloudKitError {
             errorMessage = error.errorDescription
-            isLoading = false
         } catch {
             errorMessage = "Terjadi kesalahan yang tidak diketahui"
-            isLoading = false
         }
+        isLoading = false
     }
     
-    func deleteRecommendation(at offsets: IndexSet) {
-        for index in offsets {
-            let recommendationToDelete = model.kosRecommendations[index]
-            deletingItemIds.insert(recommendationToDelete.id)
-            Task {
-                do {
-                    try await model.deleteRecommendation(kosItem: recommendationToDelete)
-                    deletingItemIds.remove(recommendationToDelete.id)
-                } catch let error as CloudKitError {
-                    deleteErrorMessage = error.errorDescription
-                    deletingItemIds.remove(recommendationToDelete.id)
-                } catch {
-                    deleteErrorMessage = "Terjadi kesalahan saat menghapus data"
-                    deletingItemIds.remove(recommendationToDelete.id)
-                }
+    func deleteItem(_ kos: KosRecommendation) {
+        deletingItemIds.insert(kos.id)
+        Task {
+            do {
+                try await model.deleteRecommendation(kosItem: kos)
+                deletingItemIds.remove(kos.id)
+            } catch let error as CloudKitError {
+                deleteErrorMessage = error.errorDescription
+                deletingItemIds.remove(kos.id)
+            } catch {
+                deleteErrorMessage = "Terjadi kesalahan saat menghapus data"
+                deletingItemIds.remove(kos.id)
             }
         }
     }
 }
-
 
 #Preview {
     KosRecommendationsList().environment(KosRecommendationViewModel())

@@ -15,6 +15,7 @@ enum CloudKitError: LocalizedError {
     case networkFailure
     case permissionDenied
     case recordNotFound
+    case updateFailure
     
     var errorDescription: String? {
         switch self {
@@ -22,6 +23,8 @@ enum CloudKitError: LocalizedError {
             return "Gagal menyimpan rekomendasi kos. Silakan coba lagi."
         case .deleteFailure:
             return "Gagal menghapus rekomendasi kos. Silakan coba lagi."
+        case .updateFailure:
+            return "Gagal mengupdate rekomendasi kos. Silakan coba lagi."
         case .loadFailure:
             return "Tidak dapat memuat daftar kos. Periksa koneksi internet Anda."
         case .networkFailure:
@@ -114,6 +117,39 @@ class KosRecommendationViewModel {
                 }
             } else {
                 throw CloudKitError.deleteFailure
+            }
+        }
+    }
+    
+    func updateRecommendation(kosItem: KosRecommendation) async throws {
+        do {
+            let existingRecord = try await db.record(for: kosItem.id)
+            
+            existingRecord[RecordKeys.name] = kosItem.name
+            existingRecord[RecordKeys.location] = kosItem.location
+            existingRecord[RecordKeys.review] = kosItem.review
+            
+            let savedRecord = try await db.save(existingRecord)
+            
+            guard let updatedKos = KosRecommendation(record: savedRecord) else {
+                throw CloudKitError.updateFailure
+            }
+            
+            KosRecommendationsDictionaries[updatedKos.id] = updatedKos
+        } catch {
+            if let cloudKitError = error as? CKError {
+                switch cloudKitError.code {
+                case .networkFailure, .networkUnavailable:
+                    throw CloudKitError.networkFailure
+                case .permissionFailure:
+                    throw CloudKitError.permissionDenied
+                case .unknownItem:
+                    throw CloudKitError.recordNotFound
+                default:
+                    throw CloudKitError.updateFailure
+                }
+            } else {
+                throw CloudKitError.updateFailure
             }
         }
     }
