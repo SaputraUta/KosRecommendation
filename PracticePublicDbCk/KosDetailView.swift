@@ -20,7 +20,6 @@ struct KosDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Title Section
                 VStack(alignment: .leading, spacing: 4) {
                     Text(kos.name)
                         .font(.title)
@@ -32,7 +31,6 @@ struct KosDetailView: View {
                 
                 Divider()
                 
-                // Review Section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Ulasan")
                         .font(.headline)
@@ -41,7 +39,6 @@ struct KosDetailView: View {
                         .foregroundStyle(.primary)
                 }
                 
-                // Map Section
                 if let location = kos.location?.coordinate {
                     let point = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
                     
